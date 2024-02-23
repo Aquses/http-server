@@ -73,47 +73,46 @@ public class HttpServer {
         switch (request.getRequestMethod()) {
             case GET: {
                 try {
-                    var a = getResousFile(request.getUri());
-                    var mime = this.getMimeFromFile(a);
+                    URI uri = request.getUri();
+                    File resourceFile = getResousFile(uri);
 
-                    try (BufferedReader reader = this.readResource(a)) {
-                        if (reader != null) {
-                            try {
-                                StringBuilder content = new StringBuilder();
-                                String line;
+                    if (resourceFile.isDirectory()) {
+                        // If the requested path is a directory, append "index.html" to the path
+                        resourceFile = new File(resourceFile, "index.html");
+                    }
 
-                                while ((line = reader.readLine()) != null) {
-                                    content.append(line);// .append("\n");
-                                }
+                    if (!resourceFile.exists()) {
+                        return Optional.of(new HttpResponse("HTTP/1.1", StatusCode.NOT_FOUND,
+                                new HttpHeader(), Mime.TXT, "404 Not Found"));
+                    }
 
-                                Mime contentType = mime;
-                                reader.close();
-                                return Optional.of(
-                                        new HttpResponse("HTTP/1.1", StatusCode.OK, new HttpHeader(),
-                                                contentType, content.toString()));
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                                return Optional.empty();
-                            }
-                        } else {
-                            return Optional.empty(); // Optional.of(new HttpResponse("HTTP/1.1", StatusCode.NOT_FOUND,
-                                                     // Optional.empty()));
+                    Mime contentType = getMimeFromFile(resourceFile);
+
+                    try (BufferedReader reader = new BufferedReader(new FileReader(resourceFile))) {
+                        StringBuilder content = new StringBuilder();
+                        String line;
+
+                        while ((line = reader.readLine()) != null) {
+                            content.append(line);
                         }
+
+                        return Optional.of(new HttpResponse("HTTP/1.1", StatusCode.OK,
+                                new HttpHeader(), contentType, content.toString()));
                     } catch (IOException e) {
-                        e.printStackTrace();
-                        return Optional.empty(); // Optional
-                        // .of(new HttpResponse("HTTP/1.1", StatusCode.INTERNAL_SERVER_ERROR,
-                        // Optional.empty()));
+                        return Optional.of(new HttpResponse("HTTP/1.1", StatusCode.INTERNAL_SERVER_ERROR,
+                                new HttpHeader(), Mime.TXT, "500 Internal Server Error"));
                     }
                 } catch (IOException ex) {
-                    ex.printStackTrace();
-                    return Optional.empty();// Optional
-                    // .of(new HttpResponse("HTTP/1.1", StatusCode.INTERNAL_SERVER_ERROR,
-                    // Optional.empty()));
+                    return Optional.of(new HttpResponse("HTTP/1.1", StatusCode.INTERNAL_SERVER_ERROR,
+                            new HttpHeader(), Mime.TXT, "500 Internal Server Error"));
                 }
             }
+            case POST: {
+                
+            }
             default:
-                return Optional.empty();
+                return Optional.of(new HttpResponse("HTTP/1.1", StatusCode.INTERNAL_SERVER_ERROR,
+                        new HttpHeader(), Mime.TXT, "500 Internal Server Error"));
         }
     }
 
