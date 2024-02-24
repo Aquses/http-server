@@ -15,11 +15,13 @@ import java.net.Socket;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+// import org.json.simple.JSONObject; 
 
 public class HttpServer {
     private static final Logger logger = Logger.getLogger(HttpServer.class.getName());
@@ -76,8 +78,8 @@ public class HttpServer {
                     URI uri = request.getUri();
                     File resourceFile = getResousFile(uri);
 
+
                     if (resourceFile.isDirectory()) {
-                        // If the requested path is a directory, append "index.html" to the path
                         resourceFile = new File(resourceFile, "index.html");
                     }
 
@@ -86,8 +88,12 @@ public class HttpServer {
                                 new HttpHeader(), Mime.TXT, "404 Not Found"));
                     }
 
-                    Mime contentType = getMimeFromFile(resourceFile);
+                    // // ||||| LOGIN ||||||
+                    // if ("login.html".equals(request.getUri().getPath())) {
 
+                    // }
+
+                    Mime contentType = getMimeFromFile(resourceFile);
                     try (BufferedReader reader = new BufferedReader(new FileReader(resourceFile))) {
                         StringBuilder content = new StringBuilder();
                         String line;
@@ -108,11 +114,43 @@ public class HttpServer {
                 }
             }
             case POST: {
-                
+                // ||||| LOGIN ||||||
+                if ("/login".equals(request.getUri().getPath())) {
+                    try {
+                        // Read the submitted credentials from the request
+                        String submittedUsername = request.getParameters().getOrDefault("username", "");
+                        String submittedPassword = request.getParameters().getOrDefault("password", "");
+                        Map<String, String> storedCredentials = request.getCredentials();
+
+                        // DEBUG
+                        System.out.println("Stored Credentials: " + storedCredentials);
+                        System.out.println("Submitted Username: " + submittedUsername);
+                        System.out.println("Submitted Password: " + submittedPassword);
+
+                        if (storedCredentials.containsKey(submittedUsername) && storedCredentials.get(submittedUsername).equals(submittedPassword)) {
+                            return Optional.of(new HttpResponse("HTTP/1.1", StatusCode.OK,
+                                new HttpHeader(), Mime.TXT, "Login successful"));
+                        } else {
+                            return Optional.of(new HttpResponse("HTTP/1.1", StatusCode.UNAUTHORIZED,
+                                    new HttpHeader(), Mime.TXT, "Unauthorized"));
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return Optional.of(new HttpResponse("HTTP/1.1", StatusCode.INTERNAL_SERVER_ERROR,
+                                new HttpHeader(), Mime.TXT, "500 Internal Server Error it goes through"));
+                    }
+                }
+
+                // if ("upload.html".equals(request.getUri().getPath())) {
+                    
+                // }
+
+
             }
             default:
+                System.err.println("Unhandled request: " + request.getRequestMethod() + " " + request.getUri());
                 return Optional.of(new HttpResponse("HTTP/1.1", StatusCode.INTERNAL_SERVER_ERROR,
-                        new HttpHeader(), Mime.TXT, "500 Internal Server Error"));
+                        new HttpHeader(), Mime.TXT, "Default: 500 Internal Server Error"));
         }
     }
 
@@ -153,8 +191,11 @@ public class HttpServer {
     public File getResousFile(URI uri) throws FileNotFoundException {
         String path = uri.getPath();
         File file = new File(rootDirectory, path);
-        return file;
 
+        if (!file.exists()) {
+            file = new File(rootDirectory, path + ".html");
+        }
+        return file;
     }
 
     public BufferedReader readResource(File file) throws FileNotFoundException {
@@ -165,6 +206,7 @@ public class HttpServer {
             throw e;
         }
     }
+
 
     public static void main(String[] args) {
         int port = 80;

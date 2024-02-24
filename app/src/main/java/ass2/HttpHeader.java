@@ -24,8 +24,6 @@ public class HttpHeader {
             if (line.isEmpty()) { // End of HTML header.
                 return headers;
             }
-
-            // Check if the line contains a colon
             int colonIndex = line.indexOf(':');
 
             if (colonIndex != -1) {
